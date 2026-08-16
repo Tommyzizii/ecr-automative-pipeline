@@ -1,0 +1,42 @@
+name: Push Docker Imag to AWS ECR Using OIDC
+
+on:
+  push:
+    branches:
+      - main
+
+premissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: devops-handbook/ecr-pipeline
+  AWS_ACCOUNT_ID: 867344460940
+  IMAGE_TAG: ${GITHUB_SHA::7}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::867344460940:role/github-actions-role
+          aws-region: us-east-1
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push Docker image to Amazon ECR
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            -f Dockerfile \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${IMAGE_TAG} \
+            .
